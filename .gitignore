@@ -1,0 +1,15 @@
+.github
+.specify
+specs/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+dist/
+*.egg-info/
+*.db
+.env
+.env.*
+.pytest_cache/
+.coverage
+htmlcov/
