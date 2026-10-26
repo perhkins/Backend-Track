@@ -1,17 +1,31 @@
-from tests.conftest import event_payload
+from tests.conftest import register_user
+
+_attendee_tokens = {}
 
 
 def create_attendee(client, user_id="attendee-1", email=None):
-    return client.post(
+    user = register_user(client, f"{user_id}@users.example.com", "attendee")
+    token = client.post(
+        "/auth/token",
+        data={"username": user["email"], "password": "test-password-123"},
+    ).json()["access_token"]
+    response = client.post(
         "/attendees",
-        headers={"X-Role": "attendee", "X-User-Id": user_id},
+        headers={"Authorization": f"Bearer {token}"},
         json={"name": "Ada Lovelace", "email": email or f"{user_id}@example.com", "phone": "123"},
     )
+    if response.status_code == 201:
+        _attendee_tokens[response.json()["id"]] = token
+    return response
+
+
+def attendee_token_headers(client, attendee_id):
+    return {"Authorization": f"Bearer {_attendee_tokens[attendee_id]}"}
 
 
 def test_attendee_crud_and_case_insensitive_email(client):
-    headers = {"X-Role": "attendee", "X-User-Id": "attendee-1"}
     created = create_attendee(client)
+    headers = attendee_token_headers(client, created.json()["id"])
     assert created.status_code == 201
     attendee_id = created.json()["id"]
     assert client.get(f"/attendees/{attendee_id}", headers=headers).status_code == 200
@@ -23,5 +37,13 @@ def test_attendee_crud_and_case_insensitive_email(client):
 
 def test_attendee_requires_owner_or_organizer(client):
     created = create_attendee(client).json()
-    wrong = {"X-Role": "attendee", "X-User-Id": "other"}
+    wrong_user = client.post(
+        "/auth/register",
+        json={"email": "other@users.example.com", "password": "test-password-123", "role": "attendee"},
+    ).json()
+    wrong_token = client.post(
+        "/auth/token",
+        data={"username": wrong_user["email"], "password": "test-password-123"},
+    ).json()["access_token"]
+    wrong = {"Authorization": f"Bearer {wrong_token}"}
     assert client.get(f"/attendees/{created['id']}", headers=wrong).status_code == 403

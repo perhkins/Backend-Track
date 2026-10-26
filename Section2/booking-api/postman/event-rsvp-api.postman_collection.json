@@ -1,0 +1,109 @@
+{
+  "info": {
+    "name": "Event RSVP API",
+    "description": "Bearer-authenticated event, attendee, RSVP, cancellation, and waitlist examples.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8000" }
+  ],
+  "item": [
+    {
+      "name": "Register organizer",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{organizerEmail}}\",\"password\":\"{{password}}\",\"role\":\"organizer\"}" },
+        "url": "{{baseUrl}}/auth/register"
+      }
+    },
+    {
+      "name": "Login organizer",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.environment.set('organizerToken', pm.response.json().access_token);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+        "body": { "mode": "urlencoded", "urlencoded": [
+          { "key": "username", "value": "{{organizerEmail}}" },
+          { "key": "password", "value": "{{password}}" }
+        ] },
+        "url": "{{baseUrl}}/auth/token"
+      }
+    },
+    {
+      "name": "Register attendee",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"{{attendeeEmail}}\",\"password\":\"{{password}}\",\"role\":\"attendee\"}" },
+        "url": "{{baseUrl}}/auth/register"
+      }
+    },
+    {
+      "name": "Login attendee",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.environment.set('attendeeToken', pm.response.json().access_token);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+        "body": { "mode": "urlencoded", "urlencoded": [
+          { "key": "username", "value": "{{attendeeEmail}}" },
+          { "key": "password", "value": "{{password}}" }
+        ] },
+        "url": "{{baseUrl}}/auth/token"
+      }
+    },
+    {
+      "name": "Create attendee profile",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.environment.set('attendeeId', pm.response.json().id);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{attendeeToken}}", "type": "string" }] },
+        "body": { "mode": "raw", "raw": "{\"name\":\"Ada Lovelace\",\"email\":\"attendee-profile@example.com\",\"phone\":\"123\"}" },
+        "url": "{{baseUrl}}/attendees"
+      }
+    },
+    {
+      "name": "Create event",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.environment.set('eventId', pm.response.json().id);"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{organizerToken}}", "type": "string" }] },
+        "body": { "mode": "raw", "raw": "{\"title\":\"API Workshop\",\"venue\":\"Room 1\",\"starts_at\":\"2030-01-01T10:00:00Z\",\"capacity\":2}" },
+        "url": "{{baseUrl}}/events"
+      }
+    },
+    {
+      "name": "List events",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/events?upcoming=true"
+      }
+    },
+    {
+      "name": "RSVP as attendee",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{attendeeToken}}", "type": "string" }] },
+        "url": "{{baseUrl}}/events/{{eventId}}/registrations"
+      }
+    },
+    {
+      "name": "Cancel RSVP",
+      "request": {
+        "method": "DELETE",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{attendeeToken}}", "type": "string" }] },
+        "url": "{{baseUrl}}/events/{{eventId}}/registrations/me"
+      }
+    },
+    {
+      "name": "View event roster",
+      "request": {
+        "method": "GET",
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{organizerToken}}", "type": "string" }] },
+        "url": "{{baseUrl}}/events/{{eventId}}/registrations"
+      }
+    }
+  ]
+}

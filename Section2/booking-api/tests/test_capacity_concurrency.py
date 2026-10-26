@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 from tests.conftest import event_payload
-from tests.test_attendees import create_attendee
+from tests.test_attendees import attendee_token_headers, create_attendee
 
 
 def test_capacity_never_exceeded(client, organizer_headers):
@@ -9,7 +9,7 @@ def test_capacity_never_exceeded(client, organizer_headers):
     attendees = [create_attendee(client, f"concurrent-{i}").json() for i in range(100)]
 
     def register(attendee):
-        headers = {"X-Role": "attendee", "X-User-Id": attendee["id"]}
+        headers = attendee_token_headers(client, attendee["id"])
         return client.post(f"/events/{event_id}/registrations", headers=headers).status_code
 
     with ThreadPoolExecutor(max_workers=10) as executor:

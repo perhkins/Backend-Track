@@ -23,21 +23,10 @@ Documentation:
 
 Events and attendees are stored as relational records. A registration increments an event's `registered_count` and creates the attendee-event relationship in one database transaction. The database constraint `registered_count <= capacity` and the unique event-attendee registration constraint protect the core invariants. Cancellation decrements the count and promotes the oldest waiting entry in the same transaction.
 
-The development exercise uses `X-Role` and `X-User-Id` headers:
-
-```text
-X-Role: organizer
-X-User-Id: organizer-1
-```
-
-or:
-
-```text
-X-Role: attendee
-X-User-Id: <attendee-id>
-```
-
-These headers demonstrate role and ownership behavior; they are not production authentication.
+Protected endpoints use bearer tokens. Register a user, exchange the credentials
+for a token, and send `Authorization: Bearer <access-token>` with each protected
+request. Roles are stored server-side and cannot be changed by request headers.
+Set a strong `JWT_SECRET` environment variable outside local development.
 
 ## Example flow
 
@@ -48,22 +37,39 @@ the command.
 ### PowerShell
 
 ```powershell
-# Create an Event
-curl.exe -X POST "http://127.0.0.1:8000/events" -H "Content-Type: application/json" -H "X-Role: organizer" -H "X-User-Id: organizer-1" --data-raw '{"title":"API Workshop","venue":"Room 1","starts_at":"2030-01-01T10:00:00Z","capacity":2}'
+# Register an organizer
+curl.exe -X POST "http://127.0.0.1:8000/auth/register" -H "Content-Type: application/json" --data-raw '{"email":"organizer@example.com","password":"strong-password","role":"organizer"}'
 
-# Attendee request
-curl.exe -X POST "http://127.0.0.1:8000/attendees" -H "Content-Type: application/json" -H "X-Role: attendee" -H "X-User-Id: attendee-1" --data-raw '{"name":"Ada Lovelace","email":"ada@example.com"}'
+# Log in and copy the access_token from the response
+curl.exe -X POST "http://127.0.0.1:8000/auth/token" -H "Content-Type: application/x-www-form-urlencoded" --data-raw "username=organizer@example.com&password=strong-password"
+
+# Create an Event
+curl.exe -X POST "http://127.0.0.1:8000/events" -H "Content-Type: application/json" -H "Authorization: Bearer <organizer-access-token>" --data-raw '{"title":"API Workshop","venue":"Room 1","starts_at":"2030-01-01T10:00:00Z","capacity":2}'
+
+# Register an attendee, log in, then create the attendee profile with that token
+curl.exe -X POST "http://127.0.0.1:8000/auth/register" -H "Content-Type: application/json" --data-raw '{"email":"ada-login@example.com","password":"strong-password","role":"attendee"}'
+curl.exe -X POST "http://127.0.0.1:8000/auth/token" -H "Content-Type: application/x-www-form-urlencoded" --data-raw "username=ada-login@example.com&password=strong-password"
+curl.exe -X POST "http://127.0.0.1:8000/attendees" -H "Content-Type: application/json" -H "Authorization: Bearer <attendee-access-token>" --data-raw '{"name":"Ada Lovelace","email":"ada@example.com"}'
 ```
 
 ### Bash
 
 ```bash
 # Create an Event
-curl.exe -X POST "http://127.0.0.1:8000/events" -H "Content-Type: application/json" -H "X-Role: organizer" -H "X-User-Id: organizer-1" --data-raw '{"title":"API Workshop","venue":"Room 1","starts_at":"2030-01-01T10:00:00Z","capacity":2}'
+curl.exe -X POST "http://127.0.0.1:8000/events" -H "Content-Type: application/json" -H "Authorization: Bearer <organizer-access-token>" --data-raw '{"title":"API Workshop","venue":"Room 1","starts_at":"2030-01-01T10:00:00Z","capacity":2}'
 
 # Attendee request
-curl.exe -X POST "http://127.0.0.1:8000/attendees" -H "Content-Type: application/json" -H "X-Role: attendee" -H "X-User-Id: attendee-1" --data-raw '{"name":"Ada Lovelace","email":"ada@example.com"}'
+curl.exe -X POST "http://127.0.0.1:8000/attendees" -H "Content-Type: application/json" -H "Authorization: Bearer <attendee-access-token>" --data-raw '{"name":"Ada Lovelace","email":"ada@example.com"}'
 ```
+
+## Postman
+
+Import `postman/event-rsvp-api.postman_collection.json` and
+`postman/event-rsvp-api.postman_environment.json` into the Postman VS Code
+extension. Run the register/login requests first; the collection test scripts
+save tokens and IDs into the environment.
+
+Published documentation URL: https://documenter.getpostman.com/view/59208032/2sBYHUULXN
 
 ## Testing
 

@@ -28,7 +28,15 @@ def test_event_rejects_invalid_input_and_wrong_owner(client, organizer_headers):
     assert client.post("/events", headers=organizer_headers, json=payload).status_code == 422
 
     created = client.post("/events", headers=organizer_headers, json=event_payload()).json()
-    wrong_owner = {"X-Role": "organizer", "X-User-Id": "other"}
+    wrong_owner_user = client.post(
+        "/auth/register",
+        json={"email": "other@example.com", "password": "test-password-123", "role": "organizer"},
+    ).json()
+    wrong_owner_token = client.post(
+        "/auth/token",
+        data={"username": wrong_owner_user["email"], "password": "test-password-123"},
+    ).json()["access_token"]
+    wrong_owner = {"Authorization": f"Bearer {wrong_owner_token}"}
     assert client.patch(f"/events/{created['id']}", headers=wrong_owner, json={"title": "No"}).status_code == 403
 
 
