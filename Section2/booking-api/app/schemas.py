@@ -24,6 +24,37 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
+class UserRegister(BaseModel):
+    email: str = Field(max_length=320)
+    password: str = Field(min_length=8, max_length=128)
+    role: Literal["organizer", "attendee"]
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value):
+        value = trim(value)
+        if "@" not in value:
+            raise ValueError("email must be valid")
+        return value.casefold()
+
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int
+    user: UserRead
+
+
 class EventCreate(BaseModel):
     title: str = Field(max_length=200)
     description: str | None = None

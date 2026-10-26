@@ -1,5 +1,5 @@
 from tests.conftest import event_payload
-from tests.test_attendees import create_attendee
+from tests.test_attendees import attendee_token_headers, create_attendee
 
 
 def setup_event(client, organizer_headers, capacity=1):
@@ -11,8 +11,8 @@ def test_rsvp_duplicate_full_and_cancellation(client, organizer_headers):
     event_id = setup_event(client, organizer_headers, 1)
     first = create_attendee(client, "attendee-1").json()
     second = create_attendee(client, "attendee-2").json()
-    first_headers = {"X-Role": "attendee", "X-User-Id": first["id"]}
-    second_headers = {"X-Role": "attendee", "X-User-Id": second["id"]}
+    first_headers = attendee_token_headers(client, first["id"])
+    second_headers = attendee_token_headers(client, second["id"])
 
     assert client.post(f"/events/{event_id}/registrations", headers=first_headers).status_code == 201
     assert client.post(f"/events/{event_id}/registrations", headers=first_headers).status_code == 409
@@ -24,7 +24,7 @@ def test_rsvp_duplicate_full_and_cancellation(client, organizer_headers):
 def test_roster_and_attendee_events(client, organizer_headers):
     event_id = setup_event(client, organizer_headers, 2)
     attendee = create_attendee(client).json()
-    headers = {"X-Role": "attendee", "X-User-Id": attendee["id"]}
+    headers = attendee_token_headers(client, attendee["id"])
     assert client.post(f"/events/{event_id}/registrations", headers=headers).status_code == 201
     roster = client.get(f"/events/{event_id}/registrations", headers=organizer_headers)
     assert roster.status_code == 200 and len(roster.json()) == 1
@@ -36,8 +36,8 @@ def test_waitlist_promotes_fifo(client, organizer_headers):
     event_id = setup_event(client, organizer_headers, 1)
     first = create_attendee(client, "first").json()
     second = create_attendee(client, "second").json()
-    first_headers = {"X-Role": "attendee", "X-User-Id": first["id"]}
-    second_headers = {"X-Role": "attendee", "X-User-Id": second["id"]}
+    first_headers = attendee_token_headers(client, first["id"])
+    second_headers = attendee_token_headers(client, second["id"])
     assert client.post(f"/events/{event_id}/registrations", headers=first_headers).status_code == 201
     waiting = client.post(f"/events/{event_id}/registrations", headers=second_headers)
     assert waiting.status_code == 201 and waiting.json()["status"] == "waiting"

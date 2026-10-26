@@ -28,14 +28,33 @@ def client(tmp_path):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def organizer_headers():
-    return {"X-Role": "organizer", "X-User-Id": "organizer-1"}
+def register_user(client, email, role):
+    response = client.post(
+        "/auth/register",
+        json={"email": email, "password": "test-password-123", "role": role},
+    )
+    assert response.status_code == 201
+    return response.json()
 
 
 @pytest.fixture
-def attendee_headers():
-    return {"X-Role": "attendee", "X-User-Id": "attendee-1"}
+def organizer_headers(client):
+    user = register_user(client, "organizer@example.com", "organizer")
+    token = client.post(
+        "/auth/token",
+        data={"username": user["email"], "password": "test-password-123"},
+    ).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def attendee_headers(client):
+    user = register_user(client, "attendee@example.com", "attendee")
+    token = client.post(
+        "/auth/token",
+        data={"username": user["email"], "password": "test-password-123"},
+    ).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 
 def event_payload(capacity=2):
